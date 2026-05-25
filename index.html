@@ -228,25 +228,32 @@
     }
 
     async function saveSummary() {
+        // 1. Capture exact values before doing anything else
         const newText = summaryInput.value.trim();
-        
-        // Optimistically update local UI and state immediately
-        appData[activeEditDateStr] = newText;
+        const targetDateStr = activeEditDateStr; 
+
+        // Safety check: if no date is active, abort the save
+        if (!targetDateStr) {
+            console.error("Save aborted: No active date selected.");
+            return; 
+        }
+
+        // 2. Optimistically update local UI so it feels instantly fast
+        appData[targetDateStr] = newText;
         activeSummaryElement.textContent = newText;
-        
-        // Grab the date string to use as the document ID
-        const docId = activeEditDateStr; 
-        
+
+        // 3. Close the modal immediately for a snappy user experience
         closeEditor();
 
-        // Push to Firebase Firestore
+        // 4. Push to Firebase using the safely captured targetDateStr
         try {
-            await setDoc(doc(db, "summaries", docId), {
+            await setDoc(doc(db, "summaries", targetDateStr), {
                 text: newText
             }, { merge: true });
+            console.log(`Successfully saved week ${targetDateStr}`);
         } catch (error) {
             console.error("Error saving to Firebase: ", error);
-            alert("Failed to sync. Check console.");
+            alert("Failed to sync to database. Check console.");
         }
     }
 
