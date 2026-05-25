@@ -79,6 +79,47 @@
             color: var(--text-main);
         }
 
+        /* --- Navigation Pill Styles --- */
+        .nav-pill {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px); /* For iOS Safari */
+            padding: 6px 8px;
+            border-radius: 30px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            border: 1px solid rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+
+        .nav-pill button {
+            background: transparent;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary-color);
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 20px;
+            transition: background-color 0.2s;
+        }
+
+        .nav-pill button:active {
+            background-color: rgba(0, 122, 255, 0.1);
+        }
+
+        .nav-divider {
+            width: 1px;
+            height: 20px;
+            background-color: var(--border-color);
+            margin: 0 4px;
+        }
+        
         /* --- New Year Boundary Styles --- */
         .week-row.year-boundary {
             border-top: 4px solid var(--text-main);
@@ -219,19 +260,16 @@
     </div>
 </div>
 
-<button id="btn-refresh" title="Refresh Calendar" style="position: fixed; top: 15px; right: 15px; width: 36px; height: 36px; border-radius: 50%; background-color: rgba(255, 255, 255, 0.9); backdrop-filter: blur(4px); color: var(--text-main); border: 1px solid var(--border-color); box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 0;">
-    ↻
-</button>
-    
-<button id="btn-load-past" style="width: 100%; max-width: 1000px; margin: 0 auto 10px auto; display: block; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--weekend-bg); color: var(--text-muted); cursor: pointer; font-size: 14px;">
-    ↑ Load Previous 4 Weeks
-</button>
     
 <div class="calendar-container" id="calendar"></div>
 
-<button id="btn-jump-today" style="position: fixed; bottom: 30px; right: 20px; padding: 12px 20px; border-radius: 30px; background-color: var(--primary-color); color: white; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 14px; font-weight: bold; cursor: pointer; display: none; z-index: 1000; transition: transform 0.2s ease;">
-    Jump to Today
-</button>
+<div class="nav-pill">
+    <button id="nav-past" title="Load Past 4 Weeks">↑ Past</button>
+    <div class="nav-divider"></div>
+    <button id="nav-today" title="Jump to Today">Today</button>
+    <div class="nav-divider"></div>
+    <button id="nav-refresh" title="Refresh App">↻ Refresh</button>
+</div>
     
 <dialog id="summary-modal">
     <h3 id="modal-week-label">Week of</h3>
@@ -491,41 +529,37 @@
     // --- 6. JUMP TO TODAY LOGIC ---
     const btnJumpToday = document.getElementById('btn-jump-today');
 
-    // Smooth scroll back to today when clicked
-    btnJumpToday.addEventListener('click', () => {
+
+    // --- 6. NAVIGATION PILL LOGIC ---
+    
+    // Load Past
+    document.getElementById('nav-past').addEventListener('click', () => {
+        const newStart = new Date(topDate);
+        newStart.setDate(newStart.getDate() - (4 * 7));
+        renderWeeks(newStart, 4, 'prepend');
+        topDate = new Date(newStart);
+        
+        // Scroll slightly up so the user knows it loaded
+        window.scrollBy({ top: -100, behavior: 'smooth' });
+    });
+
+    // Jump to Today
+    document.getElementById('nav-today').addEventListener('click', () => {
         const todayCell = document.getElementById('today-cell');
         if (todayCell) {
-            // Scroll it into the center of the viewport
             todayCell.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            // Fallback: If for some reason the cell didn't generate or was lost,
+            // reload the app to snap back to the default state.
+            window.location.reload();
         }
     });
 
-    // Watch the "Today" cell to hide/show the floating button
-    function setupTodayObserver() {
-        const todayCell = document.getElementById('today-cell');
-        if (!todayCell) return;
-
-        const observer = new IntersectionObserver((entries) => {
-            // If the cell is visible on screen, hide the button. If it's off-screen, show it.
-            if (entries.isIntersecting) {
-                btnJumpToday.style.display = 'none';
-            } else {
-                btnJumpToday.style.display = 'block';
-            }
-        }, { threshold: 0.1 }); // Fires when at least 10% of the cell is visible
-
-        observer.observe(todayCell);
-    }
-
-    // Because the calendar relies on data fetching to render, 
-    // we need to wait slightly after app initialization to attach the observer
-    setTimeout(setupTodayObserver, 500);
-
-    // --- 8. PWA REFRESH LOGIC ---
-    document.getElementById('btn-refresh').addEventListener('click', () => {
-        // Forces the browser to reload the page, fetching the latest data
+    // Refresh App
+    document.getElementById('nav-refresh').addEventListener('click', () => {
         window.location.reload();
     });
+
     
     // Boot the app
     // --- 7. AUTHENTICATION LOGIC ---
