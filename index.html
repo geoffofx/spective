@@ -78,6 +78,39 @@
             background-color: #f0f5ff;
             color: var(--text-main);
         }
+
+        /* Login Screen Styles */
+        #login-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .login-box {
+            width: 90%;
+            max-width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .login-box input {
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 16px; /* Prevents iOS auto-zoom */
+        }
+
+        .login-box button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px;
+        }
         
         /* Modal Overlay Styles */
         dialog {
@@ -161,6 +194,16 @@
     </style>
 </head>
 <body>
+
+<div id="login-screen">
+    <div class="login-box">
+        <h2 style="margin:0 0 10px 0; text-align:center;">Log In</h2>
+        <input type="email" id="login-email" placeholder="Email">
+        <input type="password" id="login-pass" placeholder="Password">
+        <button id="btn-login">Sign In</button>
+        <p id="login-error" style="color:red; font-size:12px; text-align:center; display:none;"></p>
+    </div>
+</div>
     
 <button id="btn-load-past" style="width: 100%; max-width: 1000px; margin: 0 auto 10px auto; display: block; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--weekend-bg); color: var(--text-muted); cursor: pointer; font-size: 14px;">
     ↑ Load Previous 4 Weeks
@@ -185,6 +228,7 @@
     // Import Firebase SDKs
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getFirestore, collection, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
     // --- 1. FIREBASE CONFIGURATION ---
     const firebaseConfig = {
@@ -200,6 +244,7 @@
     // Initialize Firebase and Firestore
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const auth = getAuth(app);
 
     // --- 2. APP STATE & DOM ELEMENTS ---
     const startDate = new Date('2026-04-27T00:00:00'); 
@@ -411,8 +456,6 @@
         
         // Note: 'bottomDate' is automatically set by the renderWeeks function
     }
-    // Boot the app
-    bootCalendar();
 
     // --- 6. JUMP TO TODAY LOGIC ---
     const btnJumpToday = document.getElementById('btn-jump-today');
@@ -446,6 +489,38 @@
     // Because the calendar relies on data fetching to render, 
     // we need to wait slightly after app initialization to attach the observer
     setTimeout(setupTodayObserver, 500);
+    
+    // Boot the app
+    // --- 7. AUTHENTICATION LOGIC ---
+    const loginScreen = document.getElementById('login-screen');
+    const btnLogin = document.getElementById('btn-login');
+    const loginError = document.getElementById('login-error');
+
+    // Handle Login Button Click
+    btnLogin.addEventListener('click', async () => {
+        const email = document.getElementById('login-email').value;
+        const pass = document.getElementById('login-pass').value;
+        
+        try {
+            await signInWithEmailAndPassword(auth, email, pass);
+            // On success, the onAuthStateChanged listener below will catch it
+        } catch (error) {
+            loginError.textContent = "Invalid email or password.";
+            loginError.style.display = 'block';
+        }
+    });
+
+    // Listen for login/logout state changes
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            // User is logged in! Hide the login screen and boot the app.
+            loginScreen.style.display = 'none';
+            bootCalendar();
+        } else {
+            // User is NOT logged in. Show the login screen.
+            loginScreen.style.display = 'flex';
+        }
+    });
 </script>
 </body>
 </html>
