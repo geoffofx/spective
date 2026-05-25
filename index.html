@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Continuous Calendar</title>
+    <style>
+        :root {
+            --border-color: #e0e0e0;
+            --weekend-bg: #f9f9f9;
+            --text-main: #333;
+            --text-muted: #666;
+            --primary-color: #007aff; /* iOS style blue for buttons */
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 10px;
+            background-color: #fff;
+            color: var(--text-main);
+        }
+
+        .calendar-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            border-top: 1px solid var(--border-color);
+            border-left: 1px solid var(--border-color);
+        }
+
+        .week-row {
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+        }
+
+        .day {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 2px;
+            font-size: 14px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .day.weekend {
+            background-color: var(--weekend-bg);
+        }
+
+        .day.month-start {
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .summary {
+            flex: 3.5;
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            padding: 8px 12px;
+            font-size: 14px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            box-sizing: border-box;
+            white-space: nowrap; 
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        /* Provide visual feedback that the summary is clickable */
+        .summary:hover, .summary:active {
+            background-color: #f0f5ff;
+            color: var(--text-main);
+        }
+        
+        /* Modal Overlay Styles */
+        dialog {
+            border: none;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            width: 90%;
+            max-width: 400px;
+            color: var(--text-main);
+        }
+
+        dialog::backdrop {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px); /* Sleek background blur */
+        }
+
+        dialog h3 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+
+        textarea {
+            width: 100%;
+            box-sizing: border-box;
+            font-family: inherit;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            resize: vertical;
+            min-height: 100px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        button {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+        }
+
+        #btn-cancel {
+            background-color: transparent;
+            color: var(--text-muted);
+        }
+
+        #btn-save {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        @media (max-width: 600px) {
+            .day {
+                font-size: 12px;
+                padding: 8px 1px;
+            }
+            .day.month-start {
+                font-size: 10px; 
+            }
+            .summary {
+                font-size: 12px;
+                padding: 6px;
+                flex: 4;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="calendar-container" id="calendar"></div>
+
+<dialog id="summary-modal">
+    <h3 id="modal-week-label">Week of</h3>
+    <textarea id="summary-input" placeholder="Enter life events for this week..."></textarea>
+    <div class="modal-actions">
+        <button id="btn-cancel">Cancel</button>
+        <button id="btn-save">Save</button>
+    </div>
+</dialog>
+
+<script type="module">
+    // Import Firebase SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getFirestore, collection, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+    // --- 1. FIREBASE CONFIGURATION ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyD_J0sR6l0oxhdtnwxmLsZG4Ao5WZ8tIdM",
+        authDomain: "perspective-9c0b3.firebaseapp.com",
+        projectId: "perspective-9c0b3",
+        storageBucket: "perspective-9c0b3.firebasestorage.app",
+        messagingSenderId: "278308326802",
+        appId: "1:278308326802:web:5ef8663f488366ff9f054b",
+        measurementId: "G-4BT2BGHKZN"
+    };
+
+    // Initialize Firebase and Firestore
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // --- 2. APP STATE & DOM ELEMENTS ---
+    const startDate = new Date('2026-04-27T00:00:00'); 
+    const weeksToGenerate = 15; 
+    let appData = {}; // Will now be populated from Firebase
+
+    const calendarEl = document.getElementById('calendar');
+    const modal = document.getElementById('summary-modal');
+    const modalLabel = document.getElementById('modal-week-label');
+    const summaryInput = document.getElementById('summary-input');
+    const btnCancel = document.getElementById('btn-cancel');
+    const btnSave = document.getElementById('btn-save');
+
+    let activeEditDateStr = null;
+    let activeSummaryElement = null;
+
+    function formatISODate(date) {
+        return date.toISOString().split('T');
+    }
+
+    // --- 3. MODAL & SAVE LOGIC ---
+    function openEditor(dateStr, displayDate, element) {
+        activeEditDateStr = dateStr;
+        activeSummaryElement = element;
+        modalLabel.textContent = `Week of ${displayDate}`;
+        summaryInput.value = appData[dateStr] || "";
+        modal.showModal();
+    }
+
+    function closeEditor() {
+        modal.close();
+        activeEditDateStr = null;
+        activeSummaryElement = null;
+    }
+
+    async function saveSummary() {
+        const newText = summaryInput.value.trim();
+        
+        // Optimistically update local UI and state immediately
+        appData[activeEditDateStr] = newText;
+        activeSummaryElement.textContent = newText;
+        
+        // Grab the date string to use as the document ID
+        const docId = activeEditDateStr; 
+        
+        closeEditor();
+
+        // Push to Firebase Firestore
+        try {
+            await setDoc(doc(db, "summaries", docId), {
+                text: newText
+            }, { merge: true });
+        } catch (error) {
+            console.error("Error saving to Firebase: ", error);
+            alert("Failed to sync. Check console.");
+        }
+    }
+
+    btnCancel.addEventListener('click', closeEditor);
+    btnSave.addEventListener('click', saveSummary);
+    
+    modal.addEventListener('click', (e) => {
+        const dialogDimensions = modal.getBoundingClientRect();
+        if (
+            e.clientX < dialogDimensions.left || e.clientX > dialogDimensions.right ||
+            e.clientY < dialogDimensions.top || e.clientY > dialogDimensions.bottom
+        ) {
+            closeEditor();
+        }
+    });
+
+    // --- 4. DATA FETCH & CALENDAR GENERATION ---
+    async function loadDataAndRender() {
+        // Fetch existing summaries from Firestore collection named "summaries"
+        try {
+            const querySnapshot = await getDocs(collection(db, "summaries"));
+            querySnapshot.forEach((doc) => {
+                // doc.id will be our date string (e.g., '2026-05-25')
+                appData[doc.id] = doc.data().text;
+            });
+        } catch (error) {
+            console.error("Error fetching data: ", error);
+        }
+
+        // Generate the grid now that we have the data
+        let currentDate = new Date(startDate);
+
+        for (let i = 0; i < weeksToGenerate; i++) {
+            const weekRow = document.createElement('div');
+            weekRow.className = 'week-row';
+
+            let weekMondayStr = formatISODate(currentDate);
+            let displayMondayStr = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            
+            for (let j = 0; j < 7; j++) {
+                const dayEl = document.createElement('div');
+                dayEl.className = 'day';
+                
+                const dayOfWeek = currentDate.getDay(); 
+                if (dayOfWeek === 0 || dayOfWeek === 6) dayEl.classList.add('weekend');
+
+                if (currentDate.getDate() === 1) {
+                    dayEl.classList.add('month-start');
+                    dayEl.textContent = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                } else {
+                    dayEl.textContent = currentDate.getDate();
+                }
+
+                weekRow.appendChild(dayEl);
+                currentDate.setDate(currentDate.getDate() + 1); 
+            }
+
+            const summaryEl = document.createElement('div');
+            summaryEl.className = 'summary';
+            summaryEl.textContent = appData[weekMondayStr] || ""; 
+            
+            summaryEl.addEventListener('click', () => {
+                openEditor(weekMondayStr, displayMondayStr, summaryEl);
+            });
+
+            weekRow.appendChild(summaryEl);
+            calendarEl.appendChild(weekRow);
+        }
+    }
+
+    // Initialize
+    loadDataAndRender();
+</script>
+</body>
+</html>
