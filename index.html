@@ -35,7 +35,7 @@
         }
 
         .day {
-            flex: 1;
+            flex: 0 0 45px; /* Fixed width of 45px */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -45,6 +45,7 @@
             font-size: 14px;
             text-align: center;
             box-sizing: border-box;
+            overflow: hidden;
         }
 
         .day.weekend {
@@ -57,7 +58,7 @@
         }
 
         .summary {
-            flex: 3.5;
+            flex: 1; 
             border-right: 1px solid var(--border-color);
             border-bottom: 1px solid var(--border-color);
             padding: 8px 12px;
@@ -73,10 +74,21 @@
             transition: background-color 0.2s ease;
         }
 
-        /* Provide visual feedback that the summary is clickable */
         .summary:hover, .summary:active {
             background-color: #f0f5ff;
             color: var(--text-main);
+        }
+
+        /* --- New Year Boundary Styles --- */
+        .week-row.year-boundary {
+            border-top: 4px solid var(--text-main);
+        }
+
+        .day.year-start {
+            background-color: var(--text-main);
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
         }
 
         /* Login Screen Styles */
@@ -177,8 +189,10 @@
             color: white;
         }
 
+        /* Mobile */
         @media (max-width: 600px) {
             .day {
+                flex: 0 0 35px; /* Tighter fixed width on mobile */
                 font-size: 12px;
                 padding: 8px 1px;
             }
@@ -188,7 +202,7 @@
             .summary {
                 font-size: 12px;
                 padding: 6px;
-                flex: 4;
+                flex: 1; /* Still takes all remaining space */
             }
         }
     </style>
@@ -355,12 +369,14 @@
             let weekMondayStr = formatISODate(currentDate);
             let displayMondayStr = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             
+            let isYearBoundary = false; // Tracks if we cross into a new year this week
+
             // Build the 7 days
             for (let j = 0; j < 7; j++) {
                 const dayEl = document.createElement('div');
                 dayEl.className = 'day';
                 
-                // Highlight today's date so the user knows exactly where they are
+                // Highlight today's date
                 const todayStr = formatISODate(new Date());
                 if (formatISODate(currentDate) === todayStr) {
                     dayEl.style.backgroundColor = 'var(--primary-color)';
@@ -372,7 +388,13 @@
                     if (dayOfWeek === 0 || dayOfWeek === 6) dayEl.classList.add('weekend');
                 }
 
-                if (currentDate.getDate() === 1) {
+                // Check for Year Start vs Month Start vs Regular Day
+                if (currentDate.getMonth() === 0 && currentDate.getDate() === 1) {
+                    // It's January 1st!
+                    dayEl.classList.add('year-start');
+                    dayEl.textContent = currentDate.getFullYear();
+                    isYearBoundary = true; // Flag the entire row
+                } else if (currentDate.getDate() === 1) {
                     dayEl.classList.add('month-start');
                     dayEl.textContent = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 } else {
@@ -381,6 +403,11 @@
 
                 weekRow.appendChild(dayEl);
                 currentDate.setDate(currentDate.getDate() + 1); 
+            }
+
+            // If a new year started anywhere in this week, draw a thick border on top of the row
+            if (isYearBoundary) {
+                weekRow.classList.add('year-boundary');
             }
 
             // Build the Summary column
