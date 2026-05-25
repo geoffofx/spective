@@ -228,44 +228,47 @@
     }
 
     async function saveSummary() {
-        // 1. Capture exact values before doing anything else
         const newText = summaryInput.value.trim();
-        const targetDateStr = activeEditDateStr; 
+        
+        // Ensure we capture the date as a strict string
+        const targetDateStr = String(activeEditDateStr); 
 
-        // Safety check: if no date is active, abort the save
-        if (!targetDateStr) {
+        // Safety catch
+        if (!activeEditDateStr || targetDateStr === "null") {
             console.error("Save aborted: No active date selected.");
             return; 
         }
 
-        // 2. Optimistically update local UI so it feels instantly fast
+        // Optimistically update UI instantly
         appData[targetDateStr] = newText;
-        activeSummaryElement.textContent = newText;
+        if (activeSummaryElement) {
+            activeSummaryElement.textContent = newText;
+        }
 
-        // 3. Close the modal immediately for a snappy user experience
+        // Close the modal
         closeEditor();
 
-        // 4. Push to Firebase using the safely captured targetDateStr
         try {
-            await setDoc(doc(db, "summaries", targetDateStr), {
+            // THE FIX: Pass a single concatenated string path instead of 3 arguments
+            const fullPath = `summaries/${targetDateStr}`;
+            console.log("Attempting to save to Firebase path:", fullPath);
+
+            await setDoc(doc(db, fullPath), {
                 text: newText
             }, { merge: true });
-            console.log(`Successfully saved week ${targetDateStr}`);
+            
+            console.log(`Success! Saved ${targetDateStr}`);
         } catch (error) {
-            console.error("Error saving to Firebase: ", error);
+            console.error("Firebase Error Details: ", error);
             alert("Failed to sync to database. Check console.");
         }
     }
-
     btnCancel.addEventListener('click', closeEditor);
     btnSave.addEventListener('click', saveSummary);
-    
+
     modal.addEventListener('click', (e) => {
-        const dialogDimensions = modal.getBoundingClientRect();
-        if (
-            e.clientX < dialogDimensions.left || e.clientX > dialogDimensions.right ||
-            e.clientY < dialogDimensions.top || e.clientY > dialogDimensions.bottom
-        ) {
+        // Only close if the click was directly on the dialog background, not the button inside it
+        if (e.target === modal) {
             closeEditor();
         }
     });
