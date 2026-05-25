@@ -386,7 +386,7 @@
         }
     });
 
-    async function initializeApp() {
+    async function bootCalendar() {
         // 1. Fetch all existing summaries
         try {
             const querySnapshot = await getDocs(collection(db, "summaries"));
@@ -413,7 +413,7 @@
     }
 
     // Boot the app
-    initializeApp();
+    bootCalender();
 
     // --- 6. JUMP TO TODAY LOGIC ---
     const btnJumpToday = document.getElementById('btn-jump-today');
