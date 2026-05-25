@@ -476,15 +476,6 @@
     }
 
     // --- 5. INITIALIZATION & LISTENERS ---
-    
-    // Manual trigger to load past weeks
-    document.getElementById('btn-load-past').addEventListener('click', () => {
-        // Calculate 4 weeks prior to our current top rendering boundary
-        const newStart = new Date(topDate);
-        newStart.setDate(newStart.getDate() - (4 * 7));
-        renderWeeks(newStart, 4, 'prepend');
-        topDate = new Date(newStart);
-    });
 
     // Infinite scroll for future weeks
     window.addEventListener('scroll', () => {
@@ -525,9 +516,6 @@
         
         // Note: 'bottomDate' is automatically set by the renderWeeks function
     }
-
-    // --- 6. JUMP TO TODAY LOGIC ---
-    const btnJumpToday = document.getElementById('btn-jump-today');
 
 
     // --- 6. NAVIGATION PILL LOGIC ---
