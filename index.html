@@ -119,6 +119,17 @@
             background-color: var(--border-color);
             margin: 0 4px;
         }
+
+    /* --- Current Week Styles --- */
+        .week-row.current-week {
+            background-color: rgba(0, 122, 255, 0.05); /* A very faint blue background tint */
+            border-left: 3px solid var(--primary-color); /* A solid blue line on the left edge */
+        }
+        
+        /* Ensure the weekend grey doesn't override the current week's faint blue tint */
+        .week-row.current-week .day.weekend {
+            background-color: transparent; 
+        }
         
         /* --- New Year Boundary Styles --- */
         .week-row.year-boundary {
@@ -412,6 +423,7 @@
             let displayMondayStr = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             
             let isYearBoundary = false; // Tracks if we cross into a new year this week
+            let isCurrentWeek = false;  // Tracks if this week contains "today"
 
             // Build the 7 days
             for (let j = 0; j < 7; j++) {
@@ -425,6 +437,7 @@
                     dayEl.style.color = 'white';
                     dayEl.style.fontWeight = 'bold';
                     dayEl.id = 'today-cell';
+                    isCurrentWeek = true;
                 } else {
                     const dayOfWeek = currentDate.getDay(); 
                     if (dayOfWeek === 0 || dayOfWeek === 6) dayEl.classList.add('weekend');
@@ -450,6 +463,10 @@
             // If a new year started anywhere in this week, draw a thick border on top of the row
             if (isYearBoundary) {
                 weekRow.classList.add('year-boundary');
+            }
+            // If this week contains today, highlight the entire row
+            if (isCurrentWeek) {
+                weekRow.classList.add('current-week');
             }
 
             // Build the Summary column
