@@ -161,9 +161,17 @@
     </style>
 </head>
 <body>
-
+    
+<button id="btn-load-past" style="width: 100%; max-width: 1000px; margin: 0 auto 10px auto; display: block; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--weekend-bg); color: var(--text-muted); cursor: pointer; font-size: 14px;">
+    ↑ Load Previous 4 Weeks
+</button>
+    
 <div class="calendar-container" id="calendar"></div>
 
+<button id="btn-jump-today" style="position: fixed; bottom: 30px; right: 20px; padding: 12px 20px; border-radius: 30px; background-color: var(--primary-color); color: white; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 14px; font-weight: bold; cursor: pointer; display: none; z-index: 1000; transition: transform 0.2s ease;">
+    Jump to Today
+</button>
+    
 <dialog id="summary-modal">
     <h3 id="modal-week-label">Week of</h3>
     <textarea id="summary-input" placeholder="Enter life events for this week..."></textarea>
@@ -273,35 +281,51 @@
         }
     });
 
-    // --- 4. DATA FETCH & CALENDAR GENERATION ---
-    async function loadDataAndRender() {
-        // Fetch existing summaries from Firestore collection named "summaries"
-        try {
-            const querySnapshot = await getDocs(collection(db, "summaries"));
-            querySnapshot.forEach((doc) => {
-                // doc.id will be our date string (e.g., '2026-05-25')
-                appData[doc.id] = doc.data().text;
-            });
-        } catch (error) {
-            console.error("Error fetching data: ", error);
-        }
+    // --- 4. DYNAMIC CALENDAR GENERATION ---
+    
+    // State trackers for the boundaries of our rendered grid
+    let topDate = null;    // The earliest date currently rendered
+    let bottomDate = null; // The latest date currently rendered
+    let isFetching = false;
 
-        // Generate the grid now that we have the data
+    // Helper: Find the Monday of the current week
+    function getStartOfWeek(date) {
+        const d = new Date(date);
+        d.setHours(0, 0, 0, 0);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+        d.setDate(diff);
+        return d;
+    }
+
+    // Core Engine: Builds a batch of weeks and injects them
+    function renderWeeks(startDate, numWeeks, direction = 'append') {
+        const fragment = document.createDocumentFragment();
         let currentDate = new Date(startDate);
 
-        for (let i = 0; i < weeksToGenerate; i++) {
+        for (let i = 0; i < numWeeks; i++) {
             const weekRow = document.createElement('div');
             weekRow.className = 'week-row';
 
             let weekMondayStr = formatISODate(currentDate);
             let displayMondayStr = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             
+            // Build the 7 days
             for (let j = 0; j < 7; j++) {
                 const dayEl = document.createElement('div');
                 dayEl.className = 'day';
                 
-                const dayOfWeek = currentDate.getDay(); 
-                if (dayOfWeek === 0 || dayOfWeek === 6) dayEl.classList.add('weekend');
+                // Highlight today's date so the user knows exactly where they are
+                const todayStr = formatISODate(new Date());
+                if (formatISODate(currentDate) === todayStr) {
+                    dayEl.style.backgroundColor = 'var(--primary-color)';
+                    dayEl.style.color = 'white';
+                    dayEl.style.fontWeight = 'bold';
+                    dayEl.id = 'today-cell';
+                } else {
+                    const dayOfWeek = currentDate.getDay(); 
+                    if (dayOfWeek === 0 || dayOfWeek === 6) dayEl.classList.add('weekend');
+                }
 
                 if (currentDate.getDate() === 1) {
                     dayEl.classList.add('month-start');
@@ -314,6 +338,7 @@
                 currentDate.setDate(currentDate.getDate() + 1); 
             }
 
+            // Build the Summary column
             const summaryEl = document.createElement('div');
             summaryEl.className = 'summary';
             summaryEl.textContent = appData[weekMondayStr] || ""; 
@@ -323,12 +348,105 @@
             });
 
             weekRow.appendChild(summaryEl);
-            calendarEl.appendChild(weekRow);
+            fragment.appendChild(weekRow);
+        }
+
+        // Inject into DOM and update boundaries
+        if (direction === 'append') {
+            calendarEl.appendChild(fragment);
+            bottomDate = new Date(currentDate); 
+        } else if (direction === 'prepend') {
+            calendarEl.prepend(fragment);
+            // topDate stays as the exact startDate we passed in
         }
     }
 
-    // Initialize
-    loadDataAndRender();
+    // --- 5. INITIALIZATION & LISTENERS ---
+    
+    // Manual trigger to load past weeks
+    document.getElementById('btn-load-past').addEventListener('click', () => {
+        // Calculate 4 weeks prior to our current top rendering boundary
+        const newStart = new Date(topDate);
+        newStart.setDate(newStart.getDate() - (4 * 7));
+        renderWeeks(newStart, 4, 'prepend');
+        topDate = new Date(newStart);
+    });
+
+    // Infinite scroll for future weeks
+    window.addEventListener('scroll', () => {
+        // If the user scrolls within 300px of the bottom of the page
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 300) {
+            if (!isFetching) {
+                isFetching = true;
+                renderWeeks(bottomDate, 10, 'append');
+                
+                // Slight debounce to prevent double-firing
+                setTimeout(() => { isFetching = false; }, 200);
+            }
+        }
+    });
+
+    async function initializeApp() {
+        // 1. Fetch all existing summaries
+        try {
+            const querySnapshot = await getDocs(collection(db, "summaries"));
+            querySnapshot.forEach((doc) => {
+                appData[doc.id] = doc.data().text;
+            });
+        } catch (error) {
+            console.error("Error fetching data: ", error);
+        }
+
+        // 2. Calculate initial boundaries
+        const currentMonday = getStartOfWeek(new Date());
+        
+        // Start 4 weeks ago
+        const initialStartDate = new Date(currentMonday);
+        initialStartDate.setDate(initialStartDate.getDate() - (4 * 7));
+        
+        topDate = new Date(initialStartDate);
+
+        // 3. Render 25 weeks total (4 past + 1 current + 20 future)
+        renderWeeks(initialStartDate, 25, 'append');
+        
+        // Note: 'bottomDate' is automatically set by the renderWeeks function
+    }
+
+    // Boot the app
+    initializeApp();
+
+    // --- 6. JUMP TO TODAY LOGIC ---
+    const btnJumpToday = document.getElementById('btn-jump-today');
+
+    // Smooth scroll back to today when clicked
+    btnJumpToday.addEventListener('click', () => {
+        const todayCell = document.getElementById('today-cell');
+        if (todayCell) {
+            // Scroll it into the center of the viewport
+            todayCell.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+
+    // Watch the "Today" cell to hide/show the floating button
+    function setupTodayObserver() {
+        const todayCell = document.getElementById('today-cell');
+        if (!todayCell) return;
+
+        const observer = new IntersectionObserver((entries) => {
+            // If the cell is visible on screen, hide the button. If it's off-screen, show it.
+            if (entries.isIntersecting) {
+                btnJumpToday.style.display = 'none';
+            } else {
+                btnJumpToday.style.display = 'block';
+            }
+        }, { threshold: 0.1 }); // Fires when at least 10% of the cell is visible
+
+        observer.observe(todayCell);
+    }
+
+    // Because the calendar relies on data fetching to render, 
+    // we need to wait slightly after app initialization to attach the observer
+    setTimeout(setupTodayObserver, 500);
 </script>
 </body>
 </html>
