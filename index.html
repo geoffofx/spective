@@ -16,7 +16,7 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             margin: 0;
-            padding: 10px;
+            padding: 60px 10px 80px 10px; 
             background-color: #fff;
             color: var(--text-main);
         }
@@ -76,6 +76,30 @@
 
         .summary:hover, .summary:active {
             background-color: #f0f5ff;
+            color: var(--text-main);
+        }
+
+        #app-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px); /* For iOS Safari */
+            border-bottom: 1px solid var(--border-color);
+            z-index: 900; /* Stays above the calendar grid */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #app-header h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
             color: var(--text-main);
         }
 
@@ -271,6 +295,9 @@
     </div>
 </div>
 
+<header id="app-header">
+    <h1>spective</h1>
+</header>
     
 <div class="calendar-container" id="calendar"></div>
 
