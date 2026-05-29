@@ -48,7 +48,7 @@
             overflow: hidden;
         }
 
-        .day.weekend {
+        .day.weekend, .day.holiday {
             background-color: var(--weekend-bg);
         }
 
@@ -151,7 +151,8 @@
         }
         
         /* Ensure the weekend grey doesn't override the current week's faint blue tint */
-        .week-row.current-week .day.weekend {
+        .week-row.current-week .day.weekend,
+        .week-row.current-week .day.holiday {
             background-color: transparent; 
         }
         
@@ -321,8 +322,12 @@
 <script type="module">
     // Import Firebase SDKs
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import { getFirestore, collection, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    // import { getFirestore, collection, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, doc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    
+    // --- IMPORT YOUR CUSTOM HOLIDAYS ---
+    import { customHolidays } from './holidays.js';
 
     // --- 1. FIREBASE CONFIGURATION ---
     const firebaseConfig = {
@@ -340,6 +345,34 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
+    async function runBulkImport() {
+        const batch = writeBatch(db);
+
+        // Paste your bulk data here (Date String -> Summary Text)
+        const bulkData = {
+            "2026-01-05": "New Year's recovery, back to school for the kids.",
+            "2026-01-12": "Ski trip to the mountains. Snow was decent.",
+            "2026-01-19": "Heavy work week, launched the new marketing site.",
+            // ... add as many as you need (up to 500 at a time) ...
+        };
+
+        // Loop through the data and queue it up in the batch
+        for (const [dateStr, text] of Object.entries(bulkData)) {
+            const docRef = doc(db, "summaries", dateStr);
+            batch.set(docRef, { text: text }, { merge: true });
+        }
+
+        // Send the batch to Firebase
+        try {
+            await batch.commit();
+            console.log("✅ Bulk import successful!");
+            alert("Bulk data imported successfully! Refresh the page.");
+        } catch (error) {
+            console.error("❌ Bulk import failed: ", error);
+            alert("Error importing data. Check console.");
+        }
+    }
+    
     // --- 2. APP STATE & DOM ELEMENTS ---
     const startDate = new Date('2026-04-27T00:00:00'); 
     const weeksToGenerate = 15; 
@@ -459,15 +492,25 @@
                 
                 // Highlight today's date
                 const todayStr = formatISODate(new Date());
-                if (formatISODate(currentDate) === todayStr) {
+                const currentDayStr = formatISODate(currentDate); // Capture current day string
+
+                if (currentDayStr === todayStr) {
                     dayEl.style.backgroundColor = 'var(--primary-color)';
                     dayEl.style.color = 'white';
                     dayEl.style.fontWeight = 'bold';
                     dayEl.id = 'today-cell';
-                    isCurrentWeek = true;
+                    isCurrentWeek = true; 
                 } else {
                     const dayOfWeek = currentDate.getDay(); 
-                    if (dayOfWeek === 0 || dayOfWeek === 6) dayEl.classList.add('weekend');
+                    
+                    // Check if weekend
+                    if (dayOfWeek === 0 || dayOfWeek === 6) {
+                        dayEl.classList.add('weekend');
+                    } 
+                    // Check if it matches a date in our custom holiday array
+                    else if (customHolidays.includes(currentDayStr)) {
+                        dayEl.classList.add('holiday');
+                    }
                 }
 
                 // Check for Year Start vs Month Start vs Regular Day
@@ -588,8 +631,11 @@
     });
 
     // Refresh App
+    // document.getElementById('nav-refresh').addEventListener('click', () => {
+    //     window.location.reload();
+    // });
     document.getElementById('nav-refresh').addEventListener('click', () => {
-        window.location.reload();
+        runBulkImport(); // Run the import instead of refreshing
     });
 
     
