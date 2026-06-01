@@ -50,6 +50,33 @@
             position: relative;
         }
 
+        /* --- Bounding Box (Sets) Styles --- */
+        .day {
+            /* Add variables to hold our boundary shadows. Default is empty. */
+            --set-top: 0 0 0 0 transparent;
+            --set-bottom: 0 0 0 0 transparent;
+            --set-left: 0 0 0 0 transparent;
+            --set-right: 0 0 0 0 transparent;
+            
+            /* Apply the shadows */
+            box-shadow: 
+                inset var(--set-top), 
+                inset var(--set-bottom), 
+                inset var(--set-left), 
+                inset var(--set-right);
+        }
+
+        /* When these classes are applied, they overwrite the transparent 
+           variable with a solid 2px dark grey line 
+        */
+        .day.set-top { --set-top: 0 2px 0 0 var(--text-main); }
+        .day.set-bottom { --set-bottom: 0 -2px 0 0 var(--text-main); }
+        .day.set-left { --set-left: 2px 0 0 0 var(--text-main); }
+        .day.set-right { --set-right: -2px 0 0 0 var(--text-main); }
+        
+        /* Optional: Give the inner cells of a set a very faint background tint */
+        .day.set-cell { background-color: rgba(0,0,0,0.02); }
+
         .day.weekend {
             background-color: var(--weekend-bg);
         }
@@ -379,6 +406,7 @@
     import { customHolidays } from './holidays.js';
     import { customEras } from './eras.js';
     import { customDots } from './dots.js';
+    import { customSets } from './sets.js';
 
     // --- 1. FIREBASE CONFIGURATION ---
     const firebaseConfig = {
@@ -400,6 +428,16 @@
     const startDate = new Date('2026-04-27T00:00:00'); 
     const weeksToGenerate = 15; 
     let appData = {}; // Will now be populated from Firebase
+
+    // Create a fast lookup map for our sets: {'2026-06-10': 'project-alpha'}
+    const dateToSetMap = {};
+    if (typeof customSets !== 'undefined') {
+        customSets.forEach(set => {
+            set.dates.forEach(dateStr => {
+                dateToSetMap[dateStr] = set.id;
+            });
+        });
+    }
 
     const calendarEl = document.getElementById('calendar');
     const modal = document.getElementById('summary-modal');
@@ -562,6 +600,51 @@
                     const dotEl = document.createElement('div');
                     dotEl.className = 'dot-indicator';
                     dayEl.appendChild(dotEl);
+                }
+
+                // Set boundary logic
+                const setId = dateToSetMap[currentDayStr];
+                if (setId) {
+                    dayEl.classList.add('set-cell');
+                    const dayOfWeek = currentDate.getDay(); // 0 = Sun, 1 = Mon, etc.
+
+                    // 1. Check Top (Current Date - 7 days)
+                    let topDate = new Date(currentDate);
+                    topDate.setDate(topDate.getDate() - 7);
+                    if (dateToSetMap[formatISODate(topDate)] !== setId) {
+                        dayEl.classList.add('set-top');
+                    }
+
+                    // 2. Check Bottom (Current Date + 7 days)
+                    let bottomDate = new Date(currentDate);
+                    bottomDate.setDate(bottomDate.getDate() + 7);
+                    if (dateToSetMap[formatISODate(bottomDate)] !== setId) {
+                        dayEl.classList.add('set-bottom');
+                    }
+
+                    // 3. Check Left (Current Date - 1 day)
+                    // If it's Monday (1), it's the start of the row, so always close the left box
+                    if (dayOfWeek === 1) { 
+                        dayEl.classList.add('set-left');
+                    } else {
+                        let leftDate = new Date(currentDate);
+                        leftDate.setDate(leftDate.getDate() - 1);
+                        if (dateToSetMap[formatISODate(leftDate)] !== setId) {
+                            dayEl.classList.add('set-left');
+                        }
+                    }
+
+                    // 4. Check Right (Current Date + 1 day)
+                    // If it's Sunday (0), it's the end of the row, so always close the right box
+                    if (dayOfWeek === 0) {
+                        dayEl.classList.add('set-right');
+                    } else {
+                        let rightDate = new Date(currentDate);
+                        rightDate.setDate(rightDate.getDate() + 1);
+                        if (dateToSetMap[formatISODate(rightDate)] !== setId) {
+                            dayEl.classList.add('set-right');
+                        }
+                    }
                 }
                 
                 weekRow.appendChild(dayEl);
