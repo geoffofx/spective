@@ -13,6 +13,8 @@ export const customHolidays = [
     '2022-10-10', // Columbus Day / Indigenous Peoples' Day
     '2022-11-11', // Veterans Day
     '2022-11-24', // Thanksgiving
+    '2022-11-25', // Thanksgiving
+    '2022-12-24', // Christmas Eve
     '2022-12-26', // Christmas (Observed - fell on Sun)
 
     // --- 2023 ---
@@ -26,6 +28,8 @@ export const customHolidays = [
     '2023-10-09', // Columbus Day / Indigenous Peoples' Day
     '2023-11-10', // Veterans Day (Observed - fell on Sat)
     '2023-11-23', // Thanksgiving
+    '2023-11-24', // Thanksgiving
+    '2023-12-24', // Christmas Eve
     '2023-12-25', // Christmas
 
     // --- 2024 ---
@@ -39,6 +43,8 @@ export const customHolidays = [
     '2024-10-14', // Columbus Day / Indigenous Peoples' Day
     '2024-11-11', // Veterans Day
     '2024-11-28', // Thanksgiving
+    '2024-11-29', // Thanksgiving
+    '2024-12-24', // Christmas Eve
     '2024-12-25', // Christmas
 
     // --- 2025 ---
@@ -52,6 +58,8 @@ export const customHolidays = [
     '2025-10-13', // Columbus Day / Indigenous Peoples' Day
     '2025-11-11', // Veterans Day
     '2025-11-27', // Thanksgiving
+    '2025-11-28', // Thanksgiving
+    '2025-12-24', // Christmas Eve
     '2025-12-25', // Christmas
 
     // --- 2026 ---
@@ -65,6 +73,8 @@ export const customHolidays = [
     '2026-10-12', // Columbus Day / Indigenous Peoples' Day
     '2026-11-11', // Veterans Day
     '2026-11-26', // Thanksgiving
+    '2026-11-27', // Thanksgiving
+    '2026-12-24', // Christmas Eve
     '2026-12-25', // Christmas
 
     // --- 2027 ---
@@ -78,6 +88,8 @@ export const customHolidays = [
     '2027-10-11', // Columbus Day / Indigenous Peoples' Day
     '2027-11-11', // Veterans Day
     '2027-11-25', // Thanksgiving
+    '2027-11-26', // Thanksgiving
+    '2027-12-24', // Christmas Eve
     '2027-12-24', // Christmas (Observed - falls on Sat)
 
     // --- 2028 ---
@@ -92,5 +104,7 @@ export const customHolidays = [
     '2028-10-09', // Columbus Day / Indigenous Peoples' Day
     '2028-11-10', // Veterans Day (Observed - falls on Sat)
     '2028-11-23', // Thanksgiving
+    '2028-11-24', // Thanksgiving
+    '2028-12-24', // Christmas Eve
     '2028-12-25', // Christmas
 ];
