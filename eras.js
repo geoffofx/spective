@@ -33,8 +33,8 @@ export const customEras = [
     },
     {
         title: "Winter Break 2025",
-        startDate: "2026-06-12", 
-        endDate: "2026-08-23"
+        startDate: "2025-12-23", 
+        endDate: "2026-01-02"
     },
     {
         title: "Summer Break 2026",
