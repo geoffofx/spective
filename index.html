@@ -47,6 +47,7 @@
             text-align: center;
             box-sizing: border-box;
             overflow: hidden;
+            position: relative;
         }
 
         .day.weekend {
@@ -297,6 +298,23 @@
             margin-bottom: -1px; 
         }
 
+        /* --- Dot Indicator Styles --- */
+        .dot-indicator {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 5px;
+            height: 5px;
+            background-color: var(--text-main); /* Dark grey/black */
+            border-radius: 50%;
+        }
+
+        /* If the dot happens to land on "Today" (which has a blue background), 
+           flip the dot to white so it remains visible! */
+        .day#today-cell .dot-indicator {
+            background-color: white;
+        }
+
         /* Mobile */
         @media (max-width: 600px) {
             .day {
@@ -360,6 +378,7 @@
     // --- IMPORT YOUR CUSTOM HOLIDAYS ---
     import { customHolidays } from './holidays.js';
     import { customEras } from './eras.js';
+    import { customDots } from './dots.js';
 
     // --- 1. FIREBASE CONFIGURATION ---
     const firebaseConfig = {
@@ -538,6 +557,13 @@
                     dayEl.textContent = currentDate.getDate();
                 }
 
+                // Check if this date needs a dot emphasis
+                if (customDots.includes(currentDayStr)) {
+                    const dotEl = document.createElement('div');
+                    dotEl.className = 'dot-indicator';
+                    dayEl.appendChild(dotEl);
+                }
+                
                 weekRow.appendChild(dayEl);
                 currentDate.setDate(currentDate.getDate() + 1); 
             }
