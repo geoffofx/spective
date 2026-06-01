@@ -8,6 +8,7 @@
         :root {
             --border-color: #e0e0e0;
             --weekend-bg: #f9f9f9;
+            --holiday-bg: #f2f2f2;
             --text-main: #333;
             --text-muted: #666;
             --primary-color: #007aff; /* iOS style blue for buttons */
@@ -48,8 +49,11 @@
             overflow: hidden;
         }
 
-        .day.weekend, .day.holiday {
+        .day.weekend {
             background-color: var(--weekend-bg);
+        }
+        .day.holiday {
+            background-color: var(--holiday-bg);
         }
 
         .day.month-start {
