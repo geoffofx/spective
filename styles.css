@@ -309,7 +309,7 @@ button {
     margin-bottom: 20px;
 }
 /* Restores the missing grid line on the row immediately following an era break */
-.era-end + .week-row .day {
+.era-end + .week-row > div {
     border-top: 1px solid var(--border-color);
 }
 
