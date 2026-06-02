@@ -9,6 +9,7 @@ import { customHolidays } from './holidays.js';
 import { customEras } from './eras.js';
 import { customDots } from './dots.js';
 import { customSets } from './sets.js';
+import { customChars } from './chars.js';
 
 // --- 1. FIREBASE CONFIGURATION ---
 const firebaseConfig = {
@@ -185,19 +186,32 @@ function renderWeeks(startDate, numWeeks, direction = 'append') {
                 }
             }
 
-            // Check for Year Start vs Month Start vs Regular Day
+            // --- DETERMINE DATE TEXT ---
+            let dateString = currentDate.getDate();
+            
             if (currentDate.getMonth() === 0 && currentDate.getDate() === 1) {
                 dayEl.classList.add('year-start');
-                dayEl.textContent = currentDate.getFullYear();
+                dateString = currentDate.getFullYear();
                 isYearBoundary = true; 
             } else if (currentDate.getDate() === 1) {
                 dayEl.classList.add('month-start');
-                dayEl.textContent = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            } else {
-                dayEl.textContent = currentDate.getDate();
+                dateString = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             }
 
-            // Check if this date needs a dot emphasis
+            // --- APPLY CHARACTER EMPHASIS ---
+            if (customChars[currentDayStr]) {
+                dayEl.classList.add('has-char');
+                // Inject both the tiny date and the large character
+                dayEl.innerHTML = `
+                    <span class="char-date">${dateString}</span>
+                    <span class="char-symbol">${customChars[currentDayStr]}</span>
+                `;
+            } else {
+                // Normal day text
+                dayEl.textContent = dateString;
+            }
+
+            // --- APPLY DOT EMPHASIS (Must come after text/innerHTML) ---
             if (customDots.includes(currentDayStr)) {
                 const dotEl = document.createElement('div');
                 dotEl.className = 'dot-indicator';
