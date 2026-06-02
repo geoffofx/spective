@@ -306,6 +306,7 @@ button {
 
 .era-end {
     border-bottom: 2px solid rgba(245, 166, 35, 0.4);
+    margin-bottom: 20px;
 }
 
 .era-label {
