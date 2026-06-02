@@ -63,6 +63,7 @@ body {
     flex-direction: column;
     justify-content: center;
     gap: 2px; /* Tiny space between number and symbol */
+    background: radial-gradient(circle at center, rgba(0, 122, 255, 0.08) 0%, transparent 60%);
 }
 
 .char-date {
@@ -73,9 +74,9 @@ body {
 }
 
 .char-symbol {
-    font-size: 22px; /* Make the symbol the main attraction */
+    font-size: 18px; /* Make the symbol the main attraction */
     line-height: 1;
-    filter: drop-shadow(0px 2px 3px rgba(0,0,0,0.2));
+    /* filter: drop-shadow(0px 2px 3px rgba(0,0,0,0.2)); */
 }
 
 /* If the character falls on "Today", make sure the tiny date number turns white */
