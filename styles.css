@@ -58,6 +58,30 @@ body {
         inset 0 -1px 0 0 var(--border-color);
 }
 
+/* --- Character Emphasis Styles --- */
+.day.has-char {
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px; /* Tiny space between number and symbol */
+}
+
+.char-date {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-muted);
+    line-height: 1;
+}
+
+.char-symbol {
+    font-size: 18px; /* Make the symbol the main attraction */
+    line-height: 1;
+}
+
+/* If the character falls on "Today", make sure the tiny date number turns white */
+.day#today-cell .char-date {
+    color: rgba(255, 255, 255, 0.9);
+}
+
 /* When these classes are applied, they overwrite the transparent 
    variable with a solid 2px dark grey line 
 */
