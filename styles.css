@@ -179,7 +179,7 @@ body {
 }
 /* Restores the top grid line for the isolated current week */
 .week-row.current-week > div {
-    border-top: 1px solid var(--border-color);
+    border-top: 3px solid var(--border-color);
 }
 
 /* Ensure the weekend grey doesn't override the current week's faint blue tint */
