@@ -1,0 +1,411 @@
+// Import Firebase SDKs
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+// import { getFirestore, collection, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+// --- IMPORT YOUR CUSTOM HOLIDAYS ---
+import { customHolidays } from './holidays.js';
+import { customEras } from './eras.js';
+import { customDots } from './dots.js';
+import { customSets } from './sets.js';
+
+// --- 1. FIREBASE CONFIGURATION ---
+const firebaseConfig = {
+    apiKey: "AIzaSyD_J0sR6l0oxhdtnwxmLsZG4Ao5WZ8tIdM",
+    authDomain: "perspective-9c0b3.firebaseapp.com",
+    projectId: "perspective-9c0b3",
+    storageBucket: "perspective-9c0b3.firebasestorage.app",
+    messagingSenderId: "278308326802",
+    appId: "1:278308326802:web:5ef8663f488366ff9f054b",
+    measurementId: "G-4BT2BGHKZN"
+};
+
+// Initialize Firebase and Firestore
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+// --- 2. APP STATE & DOM ELEMENTS ---
+const startDate = new Date('2026-04-27T00:00:00'); 
+const weeksToGenerate = 15; 
+let appData = {}; // Will now be populated from Firebase
+
+// Create a fast lookup map for our sets: {'2026-06-10': 'project-alpha'}
+const dateToSetMap = {};
+if (typeof customSets !== 'undefined') {
+    customSets.forEach(set => {
+        set.dates.forEach(dateStr => {
+            dateToSetMap[dateStr] = set.id;
+        });
+    });
+}
+
+const calendarEl = document.getElementById('calendar');
+const modal = document.getElementById('summary-modal');
+const modalLabel = document.getElementById('modal-week-label');
+const summaryInput = document.getElementById('summary-input');
+const btnCancel = document.getElementById('btn-cancel');
+const btnSave = document.getElementById('btn-save');
+
+let activeEditDateStr = null;
+let activeSummaryElement = null;
+
+function formatISODate(date) {
+    return date.toISOString().split('T')[0];
+}
+
+// --- 3. MODAL & SAVE LOGIC ---
+function openEditor(dateStr, displayDate, element) {
+    activeEditDateStr = dateStr;
+    activeSummaryElement = element;
+    modalLabel.textContent = `Week of ${displayDate}`;
+    summaryInput.value = appData[dateStr] || "";
+    modal.showModal();
+}
+
+function closeEditor() {
+    modal.close();
+    activeEditDateStr = null;
+    activeSummaryElement = null;
+}
+
+async function saveSummary() {
+    const newText = summaryInput.value.trim();
+    
+    // Ensure we capture the date as a strict string
+    const targetDateStr = String(activeEditDateStr); 
+
+    // Safety catch
+    if (!activeEditDateStr || targetDateStr === "null") {
+        console.error("Save aborted: No active date selected.");
+        return; 
+    }
+
+    // Optimistically update UI instantly
+    appData[targetDateStr] = newText;
+    if (activeSummaryElement) {
+        activeSummaryElement.textContent = newText;
+    }
+
+    // Close the modal
+    closeEditor();
+
+    try {
+        // THE FIX: Pass a single concatenated string path instead of 3 arguments
+        const fullPath = `summaries/${targetDateStr}`;
+        console.log("Attempting to save to Firebase path:", fullPath);
+
+        await setDoc(doc(db, fullPath), {
+            text: newText
+        }, { merge: true });
+        
+        console.log(`Success! Saved ${targetDateStr}`);
+    } catch (error) {
+        console.error("Firebase Error Details: ", error);
+        alert("Failed to sync to database. Check console.");
+    }
+}
+btnCancel.addEventListener('click', closeEditor);
+btnSave.addEventListener('click', saveSummary);
+
+modal.addEventListener('click', (e) => {
+    // Only close if the click was directly on the dialog background, not the button inside it
+    if (e.target === modal) {
+        closeEditor();
+    }
+});
+
+// --- 4. DYNAMIC CALENDAR GENERATION ---
+
+// State trackers for the boundaries of our rendered grid
+let topDate = null;    // The earliest date currently rendered
+let bottomDate = null; // The latest date currently rendered
+let isFetching = false;
+
+// Helper: Find the Monday of the current week
+function getStartOfWeek(date) {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+    d.setDate(diff);
+    return d;
+}
+
+// Core Engine: Builds a batch of weeks and injects them
+function renderWeeks(startDate, numWeeks, direction = 'append') {
+    const fragment = document.createDocumentFragment();
+    let currentDate = new Date(startDate);
+
+    for (let i = 0; i < numWeeks; i++) {
+        const weekRow = document.createElement('div');
+        weekRow.className = 'week-row';
+
+        let weekMondayStr = formatISODate(currentDate);
+        let displayMondayStr = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        
+        let isYearBoundary = false; // Tracks if we cross into a new year this week
+        let isCurrentWeek = false;  // Tracks if this week contains "today"
+
+        let activeEra = null;
+        let isEraStartWeek = false;
+        let isEraEndWeek = false;
+
+        // Build the 7 days
+        for (let j = 0; j < 7; j++) {
+            const dayEl = document.createElement('div');
+            dayEl.className = 'day';
+            
+            const todayStr = formatISODate(new Date());
+            const currentDayStr = formatISODate(currentDate);
+
+            // Check Era Overlap
+            customEras.forEach(era => {
+                if (currentDayStr >= era.startDate && currentDayStr <= era.endDate) {
+                    activeEra = era;
+                    if (currentDayStr === era.startDate) isEraStartWeek = true;
+                    if (currentDayStr === era.endDate) isEraEndWeek = true;
+                }
+            });
+
+            // Highlight today's date
+            if (currentDayStr === todayStr) {
+                dayEl.style.backgroundColor = 'var(--primary-color)';
+                dayEl.style.color = 'white';
+                dayEl.style.fontWeight = 'bold';
+                dayEl.id = 'today-cell';
+                isCurrentWeek = true; 
+            } else {
+                const dayOfWeek = currentDate.getDay(); 
+                if (dayOfWeek === 0 || dayOfWeek === 6) {
+                    dayEl.classList.add('weekend');
+                } else if (customHolidays.includes(currentDayStr)) {
+                    dayEl.classList.add('holiday');
+                }
+            }
+
+            // Check for Year Start vs Month Start vs Regular Day
+            if (currentDate.getMonth() === 0 && currentDate.getDate() === 1) {
+                dayEl.classList.add('year-start');
+                dayEl.textContent = currentDate.getFullYear();
+                isYearBoundary = true; 
+            } else if (currentDate.getDate() === 1) {
+                dayEl.classList.add('month-start');
+                dayEl.textContent = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            } else {
+                dayEl.textContent = currentDate.getDate();
+            }
+
+            // Check if this date needs a dot emphasis
+            if (customDots.includes(currentDayStr)) {
+                const dotEl = document.createElement('div');
+                dotEl.className = 'dot-indicator';
+                dayEl.appendChild(dotEl);
+            }
+
+            // Set boundary logic
+            const setId = dateToSetMap[currentDayStr];
+            if (setId) {
+                dayEl.classList.add('set-cell');
+                const dayOfWeek = currentDate.getDay(); // 0 = Sun, 1 = Mon, etc.
+
+                // 1. Check Top (Current Date - 7 days)
+                let topDate = new Date(currentDate);
+                topDate.setDate(topDate.getDate() - 7);
+                if (dateToSetMap[formatISODate(topDate)] !== setId) {
+                    dayEl.classList.add('set-top');
+                }
+
+                // 2. Check Bottom (Current Date + 7 days)
+                let bottomDate = new Date(currentDate);
+                bottomDate.setDate(bottomDate.getDate() + 7);
+                if (dateToSetMap[formatISODate(bottomDate)] !== setId) {
+                    dayEl.classList.add('set-bottom');
+                }
+
+                // 3. Check Left (Current Date - 1 day)
+                // If it's Monday (1), it's the start of the row, so always close the left box
+                if (dayOfWeek === 1) { 
+                    dayEl.classList.add('set-left');
+                } else {
+                    let leftDate = new Date(currentDate);
+                    leftDate.setDate(leftDate.getDate() - 1);
+                    if (dateToSetMap[formatISODate(leftDate)] !== setId) {
+                        dayEl.classList.add('set-left');
+                    }
+                }
+
+                // 4. Check Right (Current Date + 1 day)
+                // If it's Sunday (0), it's the end of the row, so always close the right box
+                if (dayOfWeek === 0) {
+                    dayEl.classList.add('set-right');
+                } else {
+                    let rightDate = new Date(currentDate);
+                    rightDate.setDate(rightDate.getDate() + 1);
+                    if (dateToSetMap[formatISODate(rightDate)] !== setId) {
+                        dayEl.classList.add('set-right');
+                    }
+                }
+            }
+            
+            weekRow.appendChild(dayEl);
+            currentDate.setDate(currentDate.getDate() + 1); 
+        }
+
+        // Apply Era Classes to the Row
+        if (activeEra) {
+            weekRow.classList.add('era-row');
+            
+            // If this week contains the start of the era, inject a label above the row
+            if (isEraStartWeek) {
+                weekRow.classList.add('era-start');
+                const eraLabel = document.createElement('div');
+                eraLabel.className = 'era-label';
+                eraLabel.textContent = "▼ " + activeEra.title;
+                fragment.appendChild(eraLabel); // Add label BEFORE the row
+            }
+            
+            // If this week contains the end of the era, cap the bottom
+            if (isEraEndWeek) {
+                weekRow.classList.add('era-end');
+            }
+        }
+
+        // If a new year started anywhere in this week, draw a thick border on top of the row
+        if (isYearBoundary) {
+            weekRow.classList.add('year-boundary');
+        }
+        // If this week contains today, highlight the entire row
+        if (isCurrentWeek) {
+            weekRow.classList.add('current-week');
+        }
+
+        // Build the Summary column
+        const summaryEl = document.createElement('div');
+        summaryEl.className = 'summary';
+        summaryEl.textContent = appData[weekMondayStr] || ""; 
+        
+        summaryEl.addEventListener('click', () => {
+            openEditor(weekMondayStr, displayMondayStr, summaryEl);
+        });
+
+        weekRow.appendChild(summaryEl);
+        fragment.appendChild(weekRow);
+    }
+
+    // Inject into DOM and update boundaries
+    if (direction === 'append') {
+        calendarEl.appendChild(fragment);
+        bottomDate = new Date(currentDate); 
+    } else if (direction === 'prepend') {
+        calendarEl.prepend(fragment);
+        // topDate stays as the exact startDate we passed in
+    }
+}
+
+// --- 5. INITIALIZATION & LISTENERS ---
+
+// Infinite scroll for future weeks
+window.addEventListener('scroll', () => {
+    // If the user scrolls within 300px of the bottom of the page
+    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 300) {
+        if (!isFetching) {
+            isFetching = true;
+            renderWeeks(bottomDate, 10, 'append');
+            
+            // Slight debounce to prevent double-firing
+            setTimeout(() => { isFetching = false; }, 200);
+        }
+    }
+});
+
+async function bootCalendar() {
+    // 1. Fetch all existing summaries
+    try {
+        const querySnapshot = await getDocs(collection(db, "summaries"));
+        querySnapshot.forEach((doc) => {
+            appData[doc.id] = doc.data().text;
+        });
+    } catch (error) {
+        console.error("Error fetching data: ", error);
+    }
+
+    // 2. Calculate initial boundaries
+    const currentMonday = getStartOfWeek(new Date());
+    
+    // Start 4 weeks ago
+    const initialStartDate = new Date(currentMonday);
+    initialStartDate.setDate(initialStartDate.getDate() - (4 * 7));
+    
+    topDate = new Date(initialStartDate);
+
+    // 3. Render 25 weeks total (4 past + 1 current + 20 future)
+    renderWeeks(initialStartDate, 25, 'append');
+    
+    // Note: 'bottomDate' is automatically set by the renderWeeks function
+}
+
+
+// --- 6. NAVIGATION PILL LOGIC ---
+
+// Load Past
+document.getElementById('nav-past').addEventListener('click', () => {
+    const newStart = new Date(topDate);
+    newStart.setDate(newStart.getDate() - (4 * 7));
+    renderWeeks(newStart, 4, 'prepend');
+    topDate = new Date(newStart);
+    
+    // Scroll slightly up so the user knows it loaded
+    window.scrollBy({ top: -100, behavior: 'smooth' });
+});
+
+// Jump to Today
+document.getElementById('nav-today').addEventListener('click', () => {
+    const todayCell = document.getElementById('today-cell');
+    if (todayCell) {
+        todayCell.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+        // Fallback: If for some reason the cell didn't generate or was lost,
+        // reload the app to snap back to the default state.
+        window.location.reload();
+    }
+});
+
+// Refresh App
+document.getElementById('nav-refresh').addEventListener('click', () => {
+    window.location.reload();
+});
+
+
+// Boot the app
+// --- 7. AUTHENTICATION LOGIC ---
+const loginScreen = document.getElementById('login-screen');
+const btnLogin = document.getElementById('btn-login');
+const loginError = document.getElementById('login-error');
+
+// Handle Login Button Click
+btnLogin.addEventListener('click', async () => {
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-pass').value;
+    
+    try {
+        await signInWithEmailAndPassword(auth, email, pass);
+        // On success, the onAuthStateChanged listener below will catch it
+    } catch (error) {
+        loginError.textContent = "Invalid email or password.";
+        loginError.style.display = 'block';
+    }
+});
+
+// Listen for login/logout state changes
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        // User is logged in! Hide the login screen and boot the app.
+        loginScreen.style.display = 'none';
+        bootCalendar();
+    } else {
+        // User is NOT logged in. Show the login screen.
+        loginScreen.style.display = 'flex';
+    }
+});
