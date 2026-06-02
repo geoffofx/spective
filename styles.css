@@ -175,7 +175,11 @@ body {
 .week-row.current-week {
     background-color: rgba(0, 122, 255, 0.05); /* A very faint blue background tint */
     box-shadow: inset 3px 0 0 0 var(--primary-color);
-    /* border-left: 3px solid var(--primary-color); /* A solid blue line on the left edge */ */
+    margin-top: 10px;
+}
+/* Restores the top grid line for the isolated current week */
+.week-row.current-week > div {
+    border-top: 1px solid var(--border-color);
 }
 
 /* Ensure the weekend grey doesn't override the current week's faint blue tint */
