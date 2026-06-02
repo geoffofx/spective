@@ -35,19 +35,14 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-right: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
     padding: 12px 2px;
     font-size: 14px;
     text-align: center;
     box-sizing: border-box;
     overflow: hidden;
     position: relative;
-}
-
-/* --- Bounding Box (Sets) Styles --- */
-.day {
-    /* Add variables to hold our boundary shadows. Default is empty. */
+    
+    /* Variables to hold our boundary shadows. Default is empty. */
     --set-top: 0 0 0 0 transparent;
     --set-bottom: 0 0 0 0 transparent;
     --set-left: 0 0 0 0 transparent;
@@ -58,7 +53,9 @@ body {
         inset var(--set-top), 
         inset var(--set-bottom), 
         inset var(--set-left), 
-        inset var(--set-right);
+        inset var(--set-right),
+        inset -1px 0 0 0 var(--border-color),
+        inset 0 -1px 0 0 var(--border-color);
 }
 
 /* When these classes are applied, they overwrite the transparent 
