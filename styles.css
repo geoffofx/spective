@@ -63,7 +63,7 @@ body {
     flex-direction: column;
     justify-content: center;
     gap: 2px; /* Tiny space between number and symbol */
-    background: radial-gradient(circle at center, rgba(0, 122, 255, 0.08) 0%, transparent 60%);
+    background: radial-gradient(circle at center, rgba(122, 122, 155, 0.08) 0%, transparent 60%);
 }
 
 .char-date {
