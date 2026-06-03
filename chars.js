@@ -33,11 +33,11 @@ export const customChars = {
     '2025-12-08': '⚬', // Mom's Birthday
     '2025-02-27': '🞷', // Dad's Birthday
   
-    '2026-04-11': '🗲', // Avril's Birthday
-    '2026-08-19': '✰', // Kaiser's Birthday
-    '2026-09-01': '༄', // Hazel's Birthday
-    '2026-09-27': '∞', // Tonia's Birthday
-    '2026-12-01': '𐦉', // Geoff's Birthday
+    '2026-04-11': 'AV', // Avril's Birthday
+    '2026-08-19': 'KAI', // Kaiser's Birthday
+    '2026-09-01': 'Z', // Hazel's Birthday
+    '2026-09-27': '🩵', // Tonia's Birthday
+    '2026-12-01': 'GPX', // Geoff's Birthday
     '2026-12-08': '⚬', // Mom's Birthday
     '2026-02-27': '🞷', // Dad's Birthday
   
