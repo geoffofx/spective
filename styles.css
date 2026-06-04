@@ -58,6 +58,47 @@ body {
         inset 0 -1px 0 0 var(--border-color);
 }
 
+/* --- Days of the Week Header --- */
+        .days-header {
+            display: flex;
+            position: sticky;
+            top: 50px; 
+            z-index: 100;
+            
+            /* The frosted glass effect */
+            background-color: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px); /* Safari support */
+            
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 10px; /* A little breathing room before the grid starts */
+        }
+
+        .day-label {
+            flex: 0 0 45px; /* Matches your exact .day width! */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 2px;
+            
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            /* Gives it that clean, technical look */
+            text-transform: uppercase; 
+        }
+
+        .weekend-label {
+            /* Fades the weekend letters slightly to mirror your weekend column shading */
+            opacity: 0.5; 
+        }
+
+        .desc-spacer {
+            /* Takes up whatever remaining width is left, exactly like your description column */
+            flex: 1; 
+        }
+
+
 /* --- Character Emphasis Styles --- */
 .day.has-char {
     flex-direction: column;
