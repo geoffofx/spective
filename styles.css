@@ -12,14 +12,14 @@
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     margin: 0;
-    padding: 60px 10px 80px 10px; 
+    padding: 50px 10px 80px 10px; 
     background-color: #fff;
     color: var(--text-main);
 }
 
 .calendar-container {
     max-width: 1000px;
-    margin: 0 auto;
+    margin: 10px auto 0 auto;
     border-top: 1px solid var(--border-color);
     border-left: 1px solid var(--border-color);
 }
@@ -63,7 +63,7 @@ body {
             display: flex;
             position: sticky;
             top: 50px; 
-            z-index: 100;
+            z-index: 890;
             
             /* The frosted glass effect */
             background-color: rgba(255, 255, 255, 0.85);
@@ -71,7 +71,12 @@ body {
             -webkit-backdrop-filter: blur(8px); /* Safari support */
             
             border-bottom: 1px solid var(--border-color);
-            margin-bottom: 10px; /* A little breathing room before the grid starts */
+            box-sizing: border-box;
+            
+            /* Align with the calendar container */
+            max-width: 1000px;
+            margin: 0 auto;
+            border-left: 1px solid transparent; /* Offset to align with calendar's border-left */
         }
 
         .day-label {
@@ -79,7 +84,7 @@ body {
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 8px 2px;
+            padding: 4px 2px; /* Minimal height */
             
             font-size: 11px;
             font-weight: 700;
@@ -420,6 +425,9 @@ button {
     }
     .day.month-start {
         font-size: 10px; 
+    }
+    .day-label {
+        flex: 0 0 35px; /* Matches day width on mobile */
     }
     .summary {
         font-size: 12px;
